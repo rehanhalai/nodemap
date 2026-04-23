@@ -1,0 +1,14 @@
+node_modules
+.pnpm-store
+.turbo
+
+# Build outputs
+apps/*/.next
+apps/*/dist
+
+# Logs
+*.log
+
+# Env files
+.env
+.env.*
