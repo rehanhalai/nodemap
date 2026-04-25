@@ -9,11 +9,14 @@
     "lint": "echo \"No lint configured for client\""
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
     "fabric": "^7.3.1",
     "next": "^16.0.0",
+    "postcss": "^8.5.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

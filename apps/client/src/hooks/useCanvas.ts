@@ -1,9 +1,17 @@
-import { ExtendedFabricObject } from "@/types/fabric.types";
+import { ExtendedFabricObject } from "@/types/global.types";
 import { Canvas, FabricObject } from "fabric";
 import { useEffect, useState, useRef } from "react";
-import { generateId } from "@/components/Whiteboard/Whiteboard.utils";
 
-const useCanvas = () => {
+const generateId = () =>
+	globalThis.crypto?.randomUUID?.() ??
+	`shape-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+// Canvas Initialization: It creates a new Fabric.js canvas and sets its dimensions based on the window size.
+// Object ID Generation: It extends Fabric.js objects to include unique IDs, which is crucial for real-time synchronization.
+// Event Handling: It sets up event listeners for window resizing and keyboard shortcuts (Delete/Backspace to remove selected objects).
+// Cleanup: It properly cleans up event listeners and disposes of the canvas when the component unmounts.
+
+export const useCanvas = () => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [fabricCanvas, setFabricCanvas] = useState<Canvas | null>(null);
 

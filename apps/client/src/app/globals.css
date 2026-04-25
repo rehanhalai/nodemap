@@ -1,24 +1,16 @@
+@import "tailwindcss";
+
 :root {
-  font-family: "IBM Plex Sans", sans-serif;
+	font-family: "IBM Plex Sans", sans-serif;
 }
 
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at top left, #f2f0e8, #d8e3f0);
-  color: #1f2937;
-}
-
-main {
-  width: min(720px, 90vw);
-  padding: 2rem;
-  border: 1px solid #94a3b8;
-  border-radius: 16px;
-  background: #ffffffcc;
+	margin: 0;
+	min-height: 100vh;
+	background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 45%, #cbd5e1 100%);
+	color: #0f172a;
 }
