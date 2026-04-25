@@ -1,19 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-
-type Tool = "draw" | "select" | "rectangle" | "line" | "ellipse" | "clear";
+import { toolbarTools } from "./Toolbar.types";
 
 type ToolbarProps = {
-	tool: Tool;
+	tool: (typeof toolbarTools)[number];
 	brushColor: string;
 	brushSize: number;
-	onToolChange: (tool: Tool) => void;
+	onToolChange: (tool: (typeof toolbarTools)[number]) => void;
 	onColorChange: (color: string) => void;
 	onSizeChange: (size: number) => void;
 };
-
-const getToolOptions = () => ["select", "draw", "rectangle", "line", "ellipse", "clear"] as const;
 
 const handleToolClick =
 	(onToolChange: ToolbarProps["onToolChange"]) => (tool: ToolbarProps["tool"]) => () =>
@@ -28,17 +25,15 @@ const handleSizeChange = (onSizeChange: ToolbarProps["onSizeChange"]) => (value:
 
 export const Toolbar = ({
 	tool,
-	brushColor,
+	brushColor = "#ffffff",
 	brushSize,
 	onToolChange,
 	onColorChange,
 	onSizeChange,
 }: ToolbarProps) => {
-	const toolOptions = getToolOptions();
-
 	return (
-		<div className="flex items-center gap-3 bg-gray-100 px-4 py-2 shadow-md sticky top-0 z-10">
-			{toolOptions.map((t) => (
+		<div className="flex items-center gap-3 bg-gray-400 mt-2 rounded-lg px-4 py-2 shadow-md sticky top-0 z-10">
+			{toolbarTools.map((t) => (
 				<Button
 					key={t}
 					variant={tool === t ? "default" : "outline"}

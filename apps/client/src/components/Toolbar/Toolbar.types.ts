@@ -1,4 +1,12 @@
-export const toolbarTools = ["draw", "select", "rectangle", "line", "ellipse", "clear"] as const;
+export const toolbarTools = [
+	"draw",
+	"select",
+	"rectangle",
+	"line",
+	"ellipse",
+	"clear",
+	"undo",
+] as const;
 
 export type Tool = (typeof toolbarTools)[number];
 

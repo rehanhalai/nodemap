@@ -3,33 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { Tool } from "../Toolbar/Toolbar.types";
-
-type Point = { x: number; y: number };
-
-type ShapeBase = {
-	id: string;
-	color: string;
-	size: number;
-};
-
-type FreehandShape = ShapeBase & {
-	kind: "draw";
-	points: Point[];
-};
-
-type SegmentShape = ShapeBase & {
-	kind: "line";
-	start: Point;
-	end: Point;
-};
-
-type BoxShape = ShapeBase & {
-	kind: "rectangle" | "ellipse";
-	start: Point;
-	end: Point;
-};
-
-type Shape = FreehandShape | SegmentShape | BoxShape;
+import { Point, Shape } from "./Whiteboards.types";
 
 const nextId = () =>
 	globalThis.crypto?.randomUUID?.() ??
@@ -52,7 +26,7 @@ export const Whiteboard = () => {
 	const activeToolRef = useRef<Exclude<Tool, "clear">>("rectangle");
 	const draftShapeRef = useRef<Shape | null>(null);
 	const [tool, setTool] = useState<Tool>("rectangle");
-	const [brushColor, setBrushColor] = useState("#0f172a");
+	const [brushColor, setBrushColor] = useState("#ffffff");
 	const [brushSize, setBrushSize] = useState(6);
 	const [shapes, setShapes] = useState<Shape[]>([]);
 	const [draftShape, setDraftShape] = useState<Shape | null>(null);
@@ -66,7 +40,9 @@ export const Whiteboard = () => {
 			setTool(activeToolRef.current);
 			return;
 		}
-
+		if (tool == "undo") {
+			setShapes((prev) => prev.slice(0, -1));
+		}
 		if (tool !== "select") {
 			activeToolRef.current = tool;
 		}
@@ -147,7 +123,7 @@ export const Whiteboard = () => {
 			context.stroke();
 		};
 
-		context.fillStyle = "#ffffff";
+		context.fillStyle = "#121212";
 		context.fillRect(0, 0, width, height);
 		shapes.forEach(drawShape);
 		if (draftShape) {
@@ -241,28 +217,29 @@ export const Whiteboard = () => {
 	};
 
 	return (
-		<main className="min-h-screen bg-[radial-gradient(circle_at_top,_#eef2ff,_#dbeafe_45%,_#e2e8f0)] p-4 text-slate-900">
-			<div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-white/60 bg-white/75 shadow-[0_24px_80px_rgba(15,23,42,0.14)] backdrop-blur">
-				<Toolbar
-					tool={toolbarTool}
-					brushColor={brushColor}
-					brushSize={brushSize}
-					onToolChange={setTool}
-					onColorChange={setBrushColor}
-					onSizeChange={setBrushSize}
-				/>
-				<div className="relative flex-1 p-4">
-					<canvas
-						ref={canvasRef}
-						className="h-full w-full rounded-2xl border border-slate-200 bg-white shadow-inner touch-none"
-						onPointerDown={handlePointerDown}
-						onPointerMove={handlePointerMove}
-						onPointerUp={finishShape}
-						onPointerLeave={finishShape}
+		<main className="min-h-screen min-w-screen">
+			<div className="mx-auto flex h-screen w-screen flex-col overflow-hidden">
+				<div className="absolute">
+					<Toolbar
+						tool={toolbarTool}
+						brushColor={brushColor}
+						brushSize={brushSize}
+						onToolChange={setTool}
+						onColorChange={setBrushColor}
+						onSizeChange={setBrushSize}
 					/>
-					<div className="pointer-events-none absolute bottom-7 left-7 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
-						{tool === "select" ? "Select mode" : `${tool} mode`}
-					</div>
+				</div>
+
+				<canvas
+					ref={canvasRef}
+					className="h-screen w-screen touch-none"
+					onPointerDown={handlePointerDown}
+					onPointerMove={handlePointerMove}
+					onPointerUp={finishShape}
+					onPointerLeave={finishShape}
+				/>
+				<div className="pointer-events-none absolute bottom-7 left-7 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
+					{tool === "select" ? "Select mode" : `${tool} mode`}
 				</div>
 			</div>
 		</main>
