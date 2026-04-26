@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PencilBrush } from "fabric";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { Tool } from "../Toolbar/Toolbar.types";
@@ -8,14 +8,17 @@ import { useCanvas } from "@/hooks/useCanvas";
 import { useToolHandler } from "@/hooks/useToolHandler";
 import { shortcutMap } from "./Whiteboards.types";
 import { useSocket } from "@/hooks/useSocket";
+import { ExtendedFabricObject } from "@/types/global.types";
 
 export const Whiteboard = () => {
 	const { canvasRef, fabricCanvas } = useCanvas();
 	const [tool, setTool] = useState<Tool>("rectangle");
 	const [brushColor, setBrushColor] = useState("#d8d8d8");
 	const [brushSize, setBrushSize] = useState(3);
+	const selectedObjectIdsRef = useRef<string[]>([]);
 
-	const { emitCanvasClear } = useSocket(fabricCanvas);
+	const { socketDetails, emitCanvasClear, requestObjectLock, releaseObjectLock } =
+		useSocket(fabricCanvas);
 
 	const { handleMouseDown, handleMouseMove, handleMouseUp } = useToolHandler(
 		fabricCanvas,
@@ -75,17 +78,59 @@ export const Whiteboard = () => {
 			setTool("select");
 		};
 
+		const syncSelectionLocks = () => {
+			const activeObjects = fabricCanvas.getActiveObjects() as ExtendedFabricObject[];
+			const nextSelectedIds = activeObjects.map((object) => object.id);
+			const nextSelectedIdsSet = new Set(nextSelectedIds);
+
+			selectedObjectIdsRef.current.forEach((objectId) => {
+				if (!nextSelectedIdsSet.has(objectId)) {
+					releaseObjectLock(objectId);
+				}
+			});
+
+			nextSelectedIds.forEach((objectId) => {
+				if (!selectedObjectIdsRef.current.includes(objectId)) {
+					requestObjectLock(objectId);
+				}
+			});
+
+			selectedObjectIdsRef.current = nextSelectedIds;
+			setTool("select");
+		};
+
+		const clearSelectionLocks = () => {
+			selectedObjectIdsRef.current.forEach((objectId) => {
+				releaseObjectLock(objectId);
+			});
+			selectedObjectIdsRef.current = [];
+		};
+
 		fabricCanvas.on("selection:created", handleSelectionChanged);
 		fabricCanvas.on("selection:updated", handleSelectionChanged);
+		fabricCanvas.on("selection:created", syncSelectionLocks);
+		fabricCanvas.on("selection:updated", syncSelectionLocks);
+		fabricCanvas.on("selection:cleared", clearSelectionLocks);
 
 		return () => {
 			fabricCanvas.off("selection:created", handleSelectionChanged);
 			fabricCanvas.off("selection:updated", handleSelectionChanged);
+			fabricCanvas.off("selection:created", syncSelectionLocks);
+			fabricCanvas.off("selection:updated", syncSelectionLocks);
+			fabricCanvas.off("selection:cleared", clearSelectionLocks);
 		};
-	}, [fabricCanvas]);
+	}, [fabricCanvas, requestObjectLock, releaseObjectLock]);
 
 	useEffect(() => {
 		if (!fabricCanvas) return;
+
+		const currentClientId = socketDetails?.clientId;
+		const applySelectableState = (object: ExtendedFabricObject) => {
+			const isLockedByOther = Boolean(object.lockedBy && object.lockedBy !== currentClientId);
+			const canInteract = fabricCanvas.selection && !isLockedByOther;
+			object.selectable = canInteract;
+			object.evented = canInteract;
+		};
 
 		fabricCanvas.set({ isDrawingMode: false, selection: false });
 		fabricCanvas.off("mouse:down", handleMouseDown);
@@ -104,7 +149,7 @@ export const Whiteboard = () => {
 			case "select": {
 				fabricCanvas.set({ selection: true });
 				fabricCanvas.forEachObject((obj) => {
-					obj.selectable = true;
+					applySelectableState(obj as ExtendedFabricObject);
 				});
 				break;
 			}
@@ -113,6 +158,7 @@ export const Whiteboard = () => {
 			case "ellipse": {
 				fabricCanvas.forEachObject((obj) => {
 					obj.selectable = false;
+					obj.evented = false;
 				});
 				fabricCanvas.on("mouse:down", handleMouseDown);
 				fabricCanvas.on("mouse:move", handleMouseMove);
@@ -129,7 +175,16 @@ export const Whiteboard = () => {
 			fabricCanvas.off("mouse:move", handleMouseMove);
 			fabricCanvas.off("mouse:up", handleMouseUp);
 		};
-	}, [tool, brushColor, brushSize, fabricCanvas, handleMouseDown, handleMouseMove, handleMouseUp]);
+	}, [
+		tool,
+		brushColor,
+		brushSize,
+		fabricCanvas,
+		handleMouseDown,
+		handleMouseMove,
+		handleMouseUp,
+		socketDetails?.clientId,
+	]);
 
 	const handleToolChange = (nextTool: Tool) => {
 		switch (nextTool) {
