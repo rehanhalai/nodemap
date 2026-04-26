@@ -15,7 +15,7 @@ export const Whiteboard = () => {
 	const [brushColor, setBrushColor] = useState("#d8d8d8");
 	const [brushSize, setBrushSize] = useState(3);
 
-	const scoket = useSocket(fabricCanvas);
+	const { emitCanvasClear } = useSocket(fabricCanvas);
 
 	const { handleMouseDown, handleMouseMove, handleMouseUp } = useToolHandler(
 		fabricCanvas,
@@ -37,7 +37,8 @@ export const Whiteboard = () => {
 		if (!fabricCanvas) return;
 		fabricCanvas.clear();
 		fabricCanvas.renderAll();
-	}, [fabricCanvas]);
+		emitCanvasClear();
+	}, [fabricCanvas, emitCanvasClear]);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
