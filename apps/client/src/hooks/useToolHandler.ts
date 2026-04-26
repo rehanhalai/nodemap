@@ -47,6 +47,7 @@ export const useToolHandler = (
 						originX: "left",
 						originY: "top",
 						strokeWidth: brushSize,
+						selectable: false,
 						width: 0,
 						height: 0,
 					});
@@ -57,6 +58,7 @@ export const useToolHandler = (
 						{
 							stroke: brushColor,
 							strokeWidth: brushSize,
+							selectable: false,
 						},
 					);
 					break;
@@ -71,6 +73,7 @@ export const useToolHandler = (
 						fill: "transparent",
 						stroke: brushColor,
 						strokeWidth: brushSize,
+						selectable: false,
 					});
 					break;
 				default:
@@ -136,6 +139,7 @@ export const useToolHandler = (
 					if (activeShape.canvas) {
 						canvas.remove(activeShape);
 					}
+					rect.set({ selectable: false });
 					canvas.add(activeShape);
 					canvas.renderAll();
 				}
@@ -147,6 +151,7 @@ export const useToolHandler = (
 					if (activeShape.canvas) {
 						canvas.remove(activeShape);
 					}
+					line.set({ selectable: false });
 					canvas.add(activeShape);
 					canvas.renderAll();
 				}
@@ -158,6 +163,7 @@ export const useToolHandler = (
 					if (activeShape.canvas) {
 						canvas.remove(activeShape);
 					}
+					ellipse.set({ selectable: false });
 					canvas.add(activeShape);
 					canvas.renderAll();
 				}

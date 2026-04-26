@@ -27,6 +27,7 @@ export const Whiteboard = () => {
 	const undoLastObject = useCallback(() => {
 		if (!fabricCanvas) return;
 		const objects = fabricCanvas.getObjects();
+		setTool("select");
 		const lastObject = objects[objects.length - 1];
 		if (!lastObject) return;
 		fabricCanvas.remove(lastObject);
@@ -66,6 +67,22 @@ export const Whiteboard = () => {
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [undoLastObject]);
+
+	useEffect(() => {
+		if (!fabricCanvas) return;
+
+		const handleSelectionChanged = () => {
+			setTool("select");
+		};
+
+		fabricCanvas.on("selection:created", handleSelectionChanged);
+		fabricCanvas.on("selection:updated", handleSelectionChanged);
+
+		return () => {
+			fabricCanvas.off("selection:created", handleSelectionChanged);
+			fabricCanvas.off("selection:updated", handleSelectionChanged);
+		};
+	}, [fabricCanvas]);
 
 	useEffect(() => {
 		if (!fabricCanvas) return;
@@ -122,6 +139,7 @@ export const Whiteboard = () => {
 			case "undo":
 				undoLastObject();
 				break;
+
 			default:
 				setTool(nextTool);
 		}
