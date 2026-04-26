@@ -7,12 +7,15 @@ import { Tool } from "../Toolbar/Toolbar.types";
 import { useCanvas } from "@/hooks/useCanvas";
 import { useToolHandler } from "@/hooks/useToolHandler";
 import { shortcutMap } from "./Whiteboards.types";
+import { useSocket } from "@/hooks/useSocket";
 
 export const Whiteboard = () => {
 	const { canvasRef, fabricCanvas } = useCanvas();
 	const [tool, setTool] = useState<Tool>("rectangle");
-	const [brushColor, setBrushColor] = useState("#ffffff");
-	const [brushSize, setBrushSize] = useState(6);
+	const [brushColor, setBrushColor] = useState("#d8d8d8");
+	const [brushSize, setBrushSize] = useState(3);
+
+	const scoket = useSocket(fabricCanvas);
 
 	const { handleMouseDown, handleMouseMove, handleMouseUp } = useToolHandler(
 		fabricCanvas,
@@ -126,7 +129,7 @@ export const Whiteboard = () => {
 	return (
 		<main className="min-h-screen min-w-screen bg-[#121212]">
 			<div className="mx-auto flex h-screen w-screen flex-col overflow-hidden">
-				<div className="absolute">
+				<div className="absolute p-2">
 					<Toolbar
 						tool={tool}
 						brushColor={brushColor}

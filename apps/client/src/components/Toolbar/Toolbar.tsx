@@ -25,14 +25,14 @@ const handleSizeChange = (onSizeChange: ToolbarProps["onSizeChange"]) => (value:
 
 export const Toolbar = ({
 	tool,
-	brushColor = "#ffffff",
+	brushColor = "#d8d8d8",
 	brushSize,
 	onToolChange,
 	onColorChange,
 	onSizeChange,
 }: ToolbarProps) => {
 	return (
-		<div className="flex items-center gap-3 bg-gray-400 mt-2 rounded-lg px-4 py-2 shadow-md sticky top-0 z-10">
+		<div className="flex items-center gap-3 bg-gray-600 mt-2 rounded-lg px-4 py-2 shadow-md sticky top-0 z-10">
 			{toolbarTools.map((t) => (
 				<Button
 					key={t}
@@ -54,11 +54,10 @@ export const Toolbar = ({
 				<label className="text-sm">Size:</label>
 				<Slider
 					min={1}
-					max={20}
-					step={1}
+					max={7}
+					step={2}
 					value={[brushSize]}
 					onValueChange={handleSizeChange(onSizeChange)}
-					className="w-32"
 				/>
 			</div>
 		</div>

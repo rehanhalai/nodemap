@@ -10,7 +10,7 @@ export const useSocket = (canvas: Canvas | null) => {
 	useEffect(() => {
 		const init = async () => {
 			if (!canvas) return;
-			const socket = await io(process.env.SOCKET_SERVER_URL);
+			const socket = io(process.env.NEXT_PUBLIC_SOCKET_SERVER_URL);
 			socketRef.current = socket;
 			socket.on("connect", () => {
 				setSocketDetails({ clientId: socket.id! });
