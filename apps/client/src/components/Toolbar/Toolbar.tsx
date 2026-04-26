@@ -32,7 +32,7 @@ export const Toolbar = ({
 	onSizeChange,
 }: ToolbarProps) => {
 	return (
-		<div className="flex items-center gap-3 bg-gray-600 mt-2 rounded-lg px-4 py-2 shadow-md sticky top-0 z-10">
+		<div className="pointer-events-auto inline-flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white shadow-2xl shadow-black/30 backdrop-blur-xl">
 			{toolbarTools.map((t) => (
 				<Button
 					key={t}
@@ -43,13 +43,13 @@ export const Toolbar = ({
 				</Button>
 			))}
 
-			<div className="flex items-center gap-3 ml-6">
+			<div className="ml-2 flex items-center gap-3 sm:ml-4">
 				<label className="text-sm">Color:</label>
 				<Input
 					type="color"
 					value={brushColor}
 					onChange={handleColorChange(onColorChange)}
-					className="w-10 h-10 p-0 border-none"
+					className="h-10 w-10 border-none p-0"
 				/>
 				<label className="text-sm">Size:</label>
 				<Slider

@@ -146,9 +146,9 @@ export const Whiteboard = () => {
 	};
 
 	return (
-		<main className="min-h-screen min-w-screen bg-[#121212]">
-			<div className="mx-auto flex h-screen w-screen flex-col overflow-hidden">
-				<div className="absolute p-2">
+		<main className="relative min-h-screen min-w-screen overflow-hidden bg-[#121212]">
+			<div className="relative h-screen w-screen">
+				<div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center px-4">
 					<Toolbar
 						tool={tool}
 						brushColor={brushColor}
