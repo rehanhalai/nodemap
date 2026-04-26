@@ -6,6 +6,14 @@ export type CanvasEventOpts = {
 	e: TPointerEvent;
 };
 
+export const shortcutMap: Record<string, Tool> = {
+	"1": "rectangle",
+	"2": "line",
+	"3": "ellipse",
+	"4": "draw",
+	"5": "select",
+};
+
 export type WhiteboardProps = Record<string, never>;
 
 export type WhiteboardState = {

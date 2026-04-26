@@ -1,15 +1,15 @@
 import { FabricObject } from "fabric";
 
 export interface ExtendedFabricObject extends FabricObject {
-  id: string;
-  __skipEmit?: boolean;
+	id: string;
+	__skipEmit?: boolean;
 }
 
 export interface SocketDetails {
-  clientId: string;
+	clientId: string;
 }
 export interface SerializedObjectData {
-  id: string;
-  type: string;
-  [key: string]: any;
+	id: string;
+	type: string;
+	[key: string]: unknown;
 }

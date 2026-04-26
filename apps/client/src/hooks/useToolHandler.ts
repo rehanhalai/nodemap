@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { Canvas, Rect, Line, Ellipse, TPointerEvent, TPointerEventInfo } from "fabric";
 import { Tool } from "../components/Toolbar/Toolbar.types";
 
@@ -14,39 +14,58 @@ export const useToolHandler = (
 	brushColor: string,
 	brushSize: number,
 ) => {
-	let startX = 0;
-	let startY = 0;
-	let shape: Rect | Line | Ellipse | null = null;
+	const startRef = useRef({ x: 0, y: 0 });
+	const shapeRef = useRef<Rect | Line | Ellipse | null>(null);
+
+	const getCanvasPoint = useCallback(
+		(event: TPointerEvent) => {
+			if (!canvas) return { x: 0, y: 0 };
+			const pointerCanvas = canvas as Canvas & {
+				getScenePoint?: (evt: TPointerEvent) => { x: number; y: number };
+				getPointer?: (evt: TPointerEvent) => { x: number; y: number };
+			};
+			return (
+				pointerCanvas.getScenePoint?.(event) ??
+				pointerCanvas.getPointer?.(event) ?? { x: 0, y: 0 }
+			);
+		},
+		[canvas],
+	);
 
 	const handleMouseDown = useCallback(
 		(opt: TPointerEventInfo<TPointerEvent>) => {
 			if (!canvas) return;
-			const pointer = (canvas as any).getScenePoint?.(opt.e) ??
-				(canvas as any).getPointer?.(opt.e) ?? { x: 0, y: 0 };
-			startX = pointer.x;
-			startY = pointer.y;
+			const pointer = getCanvasPoint(opt.e);
+			startRef.current = { x: pointer.x, y: pointer.y };
 			switch (tool) {
 				case "rectangle":
-					shape = new Rect({
-						left: startX,
-						top: startY,
+					shapeRef.current = new Rect({
+						left: startRef.current.x,
+						top: startRef.current.y,
 						fill: "transparent",
 						stroke: brushColor,
+						originX: "left",
+						originY: "top",
 						strokeWidth: brushSize,
 						width: 0,
 						height: 0,
 					});
 					break;
 				case "line":
-					shape = new Line([startX, startY, startX, startY], {
-						stroke: brushColor,
-						strokeWidth: brushSize,
-					});
+					shapeRef.current = new Line(
+						[startRef.current.x, startRef.current.y, startRef.current.x, startRef.current.y],
+						{
+							stroke: brushColor,
+							strokeWidth: brushSize,
+						},
+					);
 					break;
 				case "ellipse":
-					shape = new Ellipse({
-						left: startX,
-						top: startY,
+					shapeRef.current = new Ellipse({
+						left: startRef.current.x,
+						top: startRef.current.y,
+						originX: "left",
+						originY: "top",
 						rx: 0,
 						ry: 0,
 						fill: "transparent",
@@ -54,19 +73,23 @@ export const useToolHandler = (
 						strokeWidth: brushSize,
 					});
 					break;
+				default:
+					shapeRef.current = null;
+					break;
 			}
 		},
-		[canvas, tool, brushColor, brushSize],
+		[canvas, tool, brushColor, brushSize, getCanvasPoint],
 	);
 
 	const handleMouseMove = useCallback(
 		(opt: TPointerEventInfo<TPointerEvent>) => {
-			if (!canvas || !shape) return;
-			const pointer = (canvas as any).getScenePoint?.(opt.e) ??
-				(canvas as any).getPointer?.(opt.e) ?? { x: 0, y: 0 };
+			if (!canvas || !shapeRef.current) return;
+			const pointer = getCanvasPoint(opt.e);
+			const { x: startX, y: startY } = startRef.current;
+			const activeShape = shapeRef.current;
 			switch (tool) {
 				case "rectangle": {
-					const rect = shape as Rect;
+					const rect = activeShape as Rect;
 					rect.set({
 						width: Math.abs(pointer.x - startX),
 						height: Math.abs(pointer.y - startY),
@@ -76,12 +99,12 @@ export const useToolHandler = (
 					break;
 				}
 				case "line": {
-					const line = shape as Line;
+					const line = activeShape as Line;
 					line.set({ x2: pointer.x, y2: pointer.y });
 					break;
 				}
 				case "ellipse": {
-					const ellipse = shape as Ellipse;
+					const ellipse = activeShape as Ellipse;
 					ellipse.set({
 						rx: Math.abs(pointer.x - startX) / 2,
 						ry: Math.abs(pointer.y - startY) / 2,
@@ -90,53 +113,61 @@ export const useToolHandler = (
 					});
 					break;
 				}
+				default:
+					break;
 			}
-			if (shape.canvas) {
+			if (activeShape.canvas) {
 				canvas.renderAll();
 			} else {
-				canvas.add(shape);
+				canvas.add(activeShape);
 			}
 		},
-		[canvas, tool],
+		[canvas, tool, getCanvasPoint],
 	);
+
 	const handleMouseUp = useCallback(() => {
-		if (!canvas || !shape) return;
+		if (!canvas || !shapeRef.current) return;
+		const { x: startX, y: startY } = startRef.current;
+		const activeShape = shapeRef.current;
 		switch (tool) {
 			case "rectangle": {
-				const rect = shape as Rect;
+				const rect = activeShape as Rect;
 				if (rect.width !== 0 && rect.height !== 0) {
-					if (shape.canvas) {
-						canvas.remove(shape);
+					if (activeShape.canvas) {
+						canvas.remove(activeShape);
 					}
-					canvas.add(shape);
+					canvas.add(activeShape);
 					canvas.renderAll();
 				}
 				break;
 			}
 			case "line": {
-				const line = shape as Line;
+				const line = activeShape as Line;
 				if (line.x2 !== startX || line.y2 !== startY) {
-					if (shape.canvas) {
-						canvas.remove(shape);
+					if (activeShape.canvas) {
+						canvas.remove(activeShape);
 					}
-					canvas.add(shape);
+					canvas.add(activeShape);
 					canvas.renderAll();
 				}
 				break;
 			}
 			case "ellipse": {
-				const ellipse = shape as Ellipse;
+				const ellipse = activeShape as Ellipse;
 				if (ellipse.rx !== 0 && ellipse.ry !== 0) {
-					if (shape.canvas) {
-						canvas.remove(shape);
+					if (activeShape.canvas) {
+						canvas.remove(activeShape);
 					}
-					canvas.add(shape);
+					canvas.add(activeShape);
 					canvas.renderAll();
 				}
 				break;
 			}
+			default:
+				break;
 		}
-		shape = null;
+		shapeRef.current = null;
 	}, [canvas, tool]);
+
 	return { handleMouseDown, handleMouseMove, handleMouseUp };
 };

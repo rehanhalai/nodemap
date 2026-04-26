@@ -1,243 +1,143 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { PencilBrush } from "fabric";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { Tool } from "../Toolbar/Toolbar.types";
-import { Point, Shape } from "./Whiteboards.types";
-
-const nextId = () =>
-	globalThis.crypto?.randomUUID?.() ??
-	`shape-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-const toPoint = (
-	event: React.PointerEvent<HTMLCanvasElement>,
-	canvas: HTMLCanvasElement,
-): Point => {
-	const rect = canvas.getBoundingClientRect();
-	return {
-		x: event.clientX - rect.left,
-		y: event.clientY - rect.top,
-	};
-};
+import { useCanvas } from "@/hooks/useCanvas";
+import { useToolHandler } from "@/hooks/useToolHandler";
+import { shortcutMap } from "./Whiteboards.types";
 
 export const Whiteboard = () => {
-	const canvasRef = useRef<HTMLCanvasElement | null>(null);
-	const isDrawingRef = useRef(false);
-	const activeToolRef = useRef<Exclude<Tool, "clear">>("rectangle");
-	const draftShapeRef = useRef<Shape | null>(null);
+	const { canvasRef, fabricCanvas } = useCanvas();
 	const [tool, setTool] = useState<Tool>("rectangle");
 	const [brushColor, setBrushColor] = useState("#ffffff");
 	const [brushSize, setBrushSize] = useState(6);
-	const [shapes, setShapes] = useState<Shape[]>([]);
-	const [draftShape, setDraftShape] = useState<Shape | null>(null);
 
-	const toolbarTool = useMemo(() => tool, [tool]);
+	const { handleMouseDown, handleMouseMove, handleMouseUp } = useToolHandler(
+		fabricCanvas,
+		tool,
+		brushColor,
+		brushSize,
+	);
+
+	const undoLastObject = useCallback(() => {
+		if (!fabricCanvas) return;
+		const objects = fabricCanvas.getObjects();
+		const lastObject = objects[objects.length - 1];
+		if (!lastObject) return;
+		fabricCanvas.remove(lastObject);
+		fabricCanvas.renderAll();
+	}, [fabricCanvas]);
+
+	const clearCanvas = useCallback(() => {
+		if (!fabricCanvas) return;
+		fabricCanvas.clear();
+		fabricCanvas.renderAll();
+	}, [fabricCanvas]);
 
 	useEffect(() => {
-		if (tool === "clear") {
-			setShapes([]);
-			setDraftShape(null);
-			setTool(activeToolRef.current);
-			return;
-		}
-		if (tool == "undo") {
-			setShapes((prev) => prev.slice(0, -1));
-		}
-		if (tool !== "select") {
-			activeToolRef.current = tool;
-		}
-	}, [tool]);
+		const handleKeyDown = (event: KeyboardEvent) => {
+			const target = event.target as HTMLElement | null;
+			if (
+				target &&
+				(target.tagName === "INPUT" ||
+					target.tagName === "TEXTAREA" ||
+					target.isContentEditable)
+			)
+				return;
 
-	useEffect(() => {
-		const canvas = canvasRef.current;
-		if (!canvas) return;
+			if (event.ctrlKey && event.key.toLowerCase() === "z") {
+				event.preventDefault();
+				undoLastObject();
+				return;
+			}
 
-		const resize = () => {
-			const rect = canvas.getBoundingClientRect();
-			const scale = window.devicePixelRatio || 1;
-			canvas.width = Math.max(1, Math.round(rect.width * scale));
-			canvas.height = Math.max(1, Math.round(rect.height * scale));
-			const context = canvas.getContext("2d");
-			if (!context) return;
-			context.setTransform(scale, 0, 0, scale, 0, 0);
-			context.clearRect(0, 0, rect.width, rect.height);
+			const nextTool = shortcutMap[event.key];
+			if (nextTool) {
+				setTool(nextTool);
+			}
 		};
 
-		resize();
-		window.addEventListener("resize", resize);
-		return () => window.removeEventListener("resize", resize);
-	}, []);
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [undoLastObject]);
 
 	useEffect(() => {
-		const canvas = canvasRef.current;
-		if (!canvas) return;
-		const context = canvas.getContext("2d");
-		if (!context) return;
+		if (!fabricCanvas) return;
 
-		const width = canvas.clientWidth;
-		const height = canvas.clientHeight;
-		const scale = window.devicePixelRatio || 1;
-		context.setTransform(scale, 0, 0, scale, 0, 0);
-		context.clearRect(0, 0, width, height);
+		fabricCanvas.set({ isDrawingMode: false, selection: false });
+		fabricCanvas.off("mouse:down", handleMouseDown);
+		fabricCanvas.off("mouse:move", handleMouseMove);
+		fabricCanvas.off("mouse:up", handleMouseUp);
 
-		const drawShape = (shape: Shape) => {
-			context.strokeStyle = shape.color;
-			context.fillStyle = shape.kind === "ellipse" ? `${shape.color}22` : "transparent";
-			context.lineWidth = shape.size;
-			context.lineJoin = "round";
-			context.lineCap = "round";
-
-			if (shape.kind === "draw") {
-				if (shape.points.length < 2) return;
-				context.beginPath();
-				context.moveTo(shape.points[0].x, shape.points[0].y);
-				shape.points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
-				context.stroke();
-				return;
+		switch (tool) {
+			case "draw": {
+				fabricCanvas.set({ isDrawingMode: true });
+				const brush = new PencilBrush(fabricCanvas);
+				brush.color = brushColor;
+				brush.width = brushSize;
+				fabricCanvas.set("freeDrawingBrush", brush);
+				break;
 			}
-
-			const left = Math.min(shape.start.x, shape.end.x);
-			const top = Math.min(shape.start.y, shape.end.y);
-			const width = Math.abs(shape.end.x - shape.start.x);
-			const height = Math.abs(shape.end.y - shape.start.y);
-
-			context.beginPath();
-			if (shape.kind === "line") {
-				context.moveTo(shape.start.x, shape.start.y);
-				context.lineTo(shape.end.x, shape.end.y);
-				context.stroke();
-				return;
+			case "select": {
+				fabricCanvas.set({ selection: true });
+				fabricCanvas.forEachObject((obj) => {
+					obj.selectable = true;
+				});
+				break;
 			}
-
-			if (shape.kind === "rectangle") {
-				context.strokeRect(left, top, width, height);
-				return;
+			case "rectangle":
+			case "line":
+			case "ellipse": {
+				fabricCanvas.forEachObject((obj) => {
+					obj.selectable = false;
+				});
+				fabricCanvas.on("mouse:down", handleMouseDown);
+				fabricCanvas.on("mouse:move", handleMouseMove);
+				fabricCanvas.on("mouse:up", handleMouseUp);
+				break;
 			}
+			default:
+				break;
+		}
 
-			const radiusX = width / 2;
-			const radiusY = height / 2;
-			const centerX = left + radiusX;
-			const centerY = top + radiusY;
-			context.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
-			context.fill();
-			context.stroke();
+		return () => {
+			if (!fabricCanvas) return;
+			fabricCanvas.off("mouse:down", handleMouseDown);
+			fabricCanvas.off("mouse:move", handleMouseMove);
+			fabricCanvas.off("mouse:up", handleMouseUp);
 		};
+	}, [tool, brushColor, brushSize, fabricCanvas, handleMouseDown, handleMouseMove, handleMouseUp]);
 
-		context.fillStyle = "#121212";
-		context.fillRect(0, 0, width, height);
-		shapes.forEach(drawShape);
-		if (draftShape) {
-			drawShape(draftShape);
+	const handleToolChange = (nextTool: Tool) => {
+		switch (nextTool) {
+			case "clear":
+				clearCanvas();
+				break;
+			case "undo":
+				undoLastObject();
+				break;
+			default:
+				setTool(nextTool);
 		}
-	}, [shapes, draftShape]);
-
-	const updateDraft = (shape: Shape | null) => {
-		draftShapeRef.current = shape;
-		setDraftShape(shape);
-	};
-
-	const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-		const canvas = canvasRef.current;
-		if (!canvas || tool === "select") return;
-
-		const point = toPoint(event, canvas);
-		isDrawingRef.current = true;
-
-		if (tool === "draw") {
-			updateDraft({
-				id: nextId(),
-				kind: "draw",
-				color: brushColor,
-				size: brushSize,
-				points: [point],
-			});
-			return;
-		}
-
-		const shapeKind: "rectangle" | "ellipse" = tool === "ellipse" ? "ellipse" : "rectangle";
-		updateDraft(
-			tool === "line"
-				? {
-						id: nextId(),
-						kind: "line",
-						color: brushColor,
-						size: brushSize,
-						start: point,
-						end: point,
-					}
-				: {
-						id: nextId(),
-						kind: shapeKind,
-						color: brushColor,
-						size: brushSize,
-						start: point,
-						end: point,
-					},
-		);
-	};
-
-	const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-		if (!isDrawingRef.current || !draftShapeRef.current) return;
-		const canvas = canvasRef.current;
-		if (!canvas) return;
-
-		const point = toPoint(event, canvas);
-		const current = draftShapeRef.current;
-
-		if (current.kind === "draw") {
-			updateDraft({ ...current, points: [...current.points, point] });
-			return;
-		}
-
-		updateDraft({ ...current, end: point });
-	};
-
-	const finishShape = () => {
-		if (!isDrawingRef.current || !draftShapeRef.current) return;
-		const current = draftShapeRef.current;
-		isDrawingRef.current = false;
-
-		if (current.kind === "draw") {
-			if (current.points.length > 1) {
-				setShapes((previous) => [...previous, current]);
-			}
-			updateDraft(null);
-			return;
-		}
-
-		const isValid =
-			current.kind === "line"
-				? current.start.x !== current.end.x || current.start.y !== current.end.y
-				: current.start.x !== current.end.x || current.start.y !== current.end.y;
-
-		if (isValid) {
-			setShapes((previous) => [...previous, current]);
-		}
-		updateDraft(null);
 	};
 
 	return (
-		<main className="min-h-screen min-w-screen">
+		<main className="min-h-screen min-w-screen bg-[#121212]">
 			<div className="mx-auto flex h-screen w-screen flex-col overflow-hidden">
 				<div className="absolute">
 					<Toolbar
-						tool={toolbarTool}
+						tool={tool}
 						brushColor={brushColor}
 						brushSize={brushSize}
-						onToolChange={setTool}
+						onToolChange={handleToolChange}
 						onColorChange={setBrushColor}
 						onSizeChange={setBrushSize}
 					/>
 				</div>
 
-				<canvas
-					ref={canvasRef}
-					className="h-screen w-screen touch-none"
-					onPointerDown={handlePointerDown}
-					onPointerMove={handlePointerMove}
-					onPointerUp={finishShape}
-					onPointerLeave={finishShape}
-				/>
+				<canvas ref={canvasRef} className="h-screen w-screen touch-none" />
 				<div className="pointer-events-none absolute bottom-7 left-7 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
 					{tool === "select" ? "Select mode" : `${tool} mode`}
 				</div>

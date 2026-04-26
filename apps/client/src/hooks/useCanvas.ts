@@ -25,11 +25,11 @@ export const useCanvas = () => {
 				};
 			})(FabricObject.prototype.toObject);
 			const canvas = new Canvas(canvasEl, {
-				backgroundColor: "#2e2e2e",
+				backgroundColor: "#121212",
 			});
 			canvas.setDimensions({
 				width: window.innerWidth,
-				height: window.innerHeight - 80,
+				height: window.innerHeight,
 			});
 			canvas.renderAll();
 			canvas.on("object:added", (e: { target: ExtendedFabricObject }) => {
@@ -42,7 +42,7 @@ export const useCanvas = () => {
 			const resize = () => {
 				canvas.setDimensions({
 					width: window.innerWidth,
-					height: window.innerHeight - 80,
+					height: window.innerHeight,
 				});
 				canvas.renderAll();
 			};
